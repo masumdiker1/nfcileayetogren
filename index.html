@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Günün Ayeti</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #container {
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 30px 40px;
+            max-width: 700px;
+            width: 100%;
+            text-align: center;
+            opacity: 0; /* Başlangıçta görünmez */
+            transform: translateY(20px); /* Aşağıdan gelme efekti için */
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
+        #container.loaded {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        #surah-info {
+            font-size: 1.5em;
+            font-weight: 500;
+            color: #5a5a5a;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 15px;
+        }
+        #ayet-arabic {
+            font-family: 'Amiri', serif;
+            font-size: 2.2em;
+            direction: rtl; /* Arapça için sağdan sola hizalama */
+            line-height: 1.8;
+            color: #2c3e50;
+            margin-bottom: 25px;
+        }
+        #ayet-meal {
+            font-size: 1.2em;
+            line-height: 1.7;
+            color: #34495e;
+            text-align: left; /* Meal metni soldan başlasın */
+        }
+        #loader {
+            font-size: 1.5em;
+            color: #777;
+        }
+        footer {
+            position: absolute;
+            bottom: 10px;
+            font-size: 0.8em;
+            color: #aaa;
+        }
+        footer a {
+            color: #888;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader">Yükleniyor...</div>
+
+    <div id="container">
+        <h2 id="surah-info"></h2>
+        <p id="ayet-arabic"></p>
+        <p id="ayet-meal"></p>
+    </div>
+
+    <footer>
+        Veriler <a href="https://alquran.cloud/api" target="_blank">alquran.cloud API</a>'sinden alınmıştır.
+    </footer>
+
+    <script>
+        // Her suredeki ayet sayılarını içeren dizi (1'den 114'e kadar)
+        const surahVerseCounts = [
+            7, 286, 200, 176, 120, 165, 206, 75, 129, 109, 123, 111, 43, 52, 99, 128, 111, 110, 98, 135,
+            112, 78, 118, 64, 77, 227, 93, 88, 69, 60, 34, 30, 73, 54, 45, 83, 182, 88, 75, 85, 54, 53,
+            89, 59, 37, 35, 38, 29, 18, 45, 60, 49, 62, 55, 78, 96, 29, 22, 24, 13, 14, 11, 11, 18, 12,
+            12, 30, 52, 52, 44, 28, 28, 20, 56, 40, 31, 50, 40, 46, 42, 29, 19, 36, 25, 22, 17, 19, 26,
+            30, 20, 15, 21, 11, 8, 8, 19, 5, 8, 8, 11, 11, 8, 3, 9, 5, 4, 7, 3, 6, 3, 5, 4, 5, 6
+        ];
+
+        // Sayfa yüklendiğinde rastgele bir ayet getiren fonksiyonu çalıştır
+        document.addEventListener('DOMContentLoaded', getRandomAyet);
+
+        async function getRandomAyet() {
+            const container = document.getElementById('container');
+            const loader = document.getElementById('loader');
+
+            try {
+                // 1. Rastgele bir sure ve ayet numarası seç
+                const randomSurahIndex = Math.floor(Math.random() * 114); // 0-113 arası index
+                const surahNumber = randomSurahIndex + 1; // 1-114 arası sure no
+                
+                const verseCountInSurah = surahVerseCounts[randomSurahIndex];
+                const randomVerseNumber = Math.floor(Math.random() * verseCountInSurah) + 1; // 1'den o suredeki ayet sayısına kadar
+
+                // 2. API'ye istek atmak için URL oluştur
+                // API'den hem Arapça orjinalini (quran-uthmani) hem de Diyanet İşleri mealini (tr.diyanet) tek seferde istiyoruz.
+                const apiUrl = `https://api.alquran.cloud/v1/ayah/${surahNumber}:${randomVerseNumber}/editions/quran-uthmani,tr.diyanet`;
+                
+                // 3. API'den verileri çek
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error('API yanıt vermiyor veya bir hata oluştu.');
+                }
+                const data = await response.json();
+
+                // 4. Gelen veriyi işle
+                const arabicData = data.data[0];
+                const turkishData = data.data[1];
+
+                // 5. HTML elemanlarını güncelle
+                document.getElementById('surah-info').textContent = `${arabicData.surah.name} Suresi, ${arabicData.numberInSurah}. Ayet`;
+                document.getElementById('ayet-arabic').textContent = arabicData.text;
+                document.getElementById('ayet-meal').textContent = `Meali: ${turkishData.text}`;
+                
+                // Yükleyiciyi gizle, içeriği göster
+                loader.style.display = 'none';
+                container.classList.add('loaded');
+
+            } catch (error) {
+                // Hata durumunda kullanıcıyı bilgilendir
+                loader.textContent = 'Ayet yüklenirken bir sorun oluştu. Lütfen sayfayı yenileyin.';
+                console.error('Hata:', error);
+            }
+        }
+    </script>
+</body>
+</html>
